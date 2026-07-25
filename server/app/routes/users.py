@@ -35,3 +35,26 @@ def approve_user(user_id: uuid.UUID, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     return user
+
+@router.delete("/{user_id}", status_code=status.HTTP_200_OK)
+def delete_pending_user(user_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Delete an unverified user account request."""
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="User not found"
+        )
+    
+    db.delete(user)
+    db.commit()
+    
+    return {"message": "User request removed successfully"}
+
+
+@router.get("/approved", response_model=List[UserResponse])
+def get_verified_users(db: Session = Depends(get_db)):
+    """Fetch all verified team members available for lead assignment."""
+    verified_users = db.query(User).filter(User.is_verified == True).all()
+    return verified_users

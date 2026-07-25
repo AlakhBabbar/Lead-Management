@@ -57,7 +57,7 @@ export default function LeadSlideOver({ lead, isOpen, onClose, onUpdate }: LeadS
     setIsUpdating(true);
     try {
       // Assuming your backend update route accepts assigned_to_id
-      await api.put(`/leads/${lead.id}`, { assigned_to_id: e.target.value || null });
+      await api.put(`/leads/${lead.id}`, { assigned_to: e.target.value || null });
       onUpdate();
     } catch (error) {
       console.error('Failed to update assignee', error);
@@ -115,11 +115,11 @@ export default function LeadSlideOver({ lead, isOpen, onClose, onUpdate }: LeadS
                   disabled={isUpdating}
                   className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all disabled:opacity-50"
                 >
-                  <option value="NEW">New</option>
-                  <option value="CONTACTED">Contacted</option>
-                  <option value="QUALIFIED">Qualified</option>
-                  <option value="LOST">Lost</option>
-                  <option value="WON">Won</option>
+                  <option value="new">New</option>
+                  <option value="contacted">Contacted</option>
+                  <option value="qualified">Qualified</option>
+                  <option value="lost">Lost</option>
+                  <option value="won">Won</option>
                 </select>
               </div>
 
@@ -130,7 +130,7 @@ export default function LeadSlideOver({ lead, isOpen, onClose, onUpdate }: LeadS
                     Assignee
                   </label>
                   <select
-                    value={lead.assigned_to_id || ''}
+                    value={lead.assigned_to || ''}
                     onChange={handleAssigneeChange}
                     disabled={isUpdating}
                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all disabled:opacity-50"
