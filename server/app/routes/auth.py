@@ -58,7 +58,7 @@ def login(response: Response, login_data: LoginRequest, db: Session = Depends(ge
         value=access_token,
         httponly=True,
         secure=True,
-        samesite="lax", 
+        samesite="none", 
         max_age=3600 
     )
     # Returning the role helps the frontend route the user to the correct dashboard
