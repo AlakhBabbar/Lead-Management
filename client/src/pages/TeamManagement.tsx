@@ -18,7 +18,10 @@ export default function TeamManagement() {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // UX fix: Track both the ID and the specific action being taken
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processingAction, setProcessingAction] = useState<'APPROVE' | 'REJECT' | null>(null);
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,8 +41,6 @@ export default function TeamManagement() {
       const response = await api.get('/users/pending');
       setPendingUsers(response.data);
     } catch (err: any) {
-      // A 401 means the session expired — the global axios interceptor already
-      // redirects to /login, so there's no need to flash an error here too.
       if (err.response?.status !== 401) {
         setError('Failed to load pending users.');
       }
@@ -50,6 +51,7 @@ export default function TeamManagement() {
 
   const handleApprove = async (userId: string) => {
     setProcessingId(userId);
+    setProcessingAction('APPROVE');
     try {
       await api.put(`/users/${userId}/approve`);
       setPendingUsers(prev => prev.filter(u => u.id !== userId));
@@ -59,18 +61,18 @@ export default function TeamManagement() {
       }
     } finally {
       setProcessingId(null);
+      setProcessingAction(null);
     }
   };
 
-  // NEW: Handle deleting/rejecting a pending user request
   const handleReject = async (userId: string, userName: string) => {
     if (!window.confirm(`Are you sure you want to remove the request for ${userName}? This will delete the account permanently.`)) {
       return;
     }
 
     setProcessingId(userId);
+    setProcessingAction('REJECT');
     try {
-      // Assuming your backend route to delete a user is DELETE /api/users/{id}
       await api.delete(`/users/${userId}`);
       setPendingUsers(prev => prev.filter(u => u.id !== userId));
     } catch (err: any) {
@@ -79,6 +81,7 @@ export default function TeamManagement() {
       }
     } finally {
       setProcessingId(null);
+      setProcessingAction(null);
     }
   };
 
@@ -183,7 +186,7 @@ export default function TeamManagement() {
                   disabled={processingId === pendingUser.id}
                   className="px-3 py-2 bg-white border border-gray-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 hover:border-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all active:scale-[0.98] disabled:opacity-50 whitespace-nowrap"
                 >
-                  {processingId === pendingUser.id ? 'Processing...' : 'Remove'}
+                  {processingId === pendingUser.id && processingAction === 'REJECT' ? 'Removing...' : 'Remove'}
                 </button>
 
                 <button
@@ -191,7 +194,7 @@ export default function TeamManagement() {
                   disabled={processingId === pendingUser.id}
                   className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-all active:scale-[0.98] disabled:opacity-50 whitespace-nowrap"
                 >
-                  {processingId === pendingUser.id ? 'Processing...' : 'Approve Access'}
+                  {processingId === pendingUser.id && processingAction === 'APPROVE' ? 'Approving...' : 'Approve Access'}
                 </button>
               </div>
             </div>
