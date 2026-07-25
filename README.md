@@ -202,3 +202,28 @@ You can use the following pre-seeded accounts to test the application. (Password
 * `GET /api/users/approved` - Fetch all active, verified team members (Admin only).
 * `PUT /api/users/{user_id}/approve` - Approve a pending user account (Admin only).
 * `DELETE /api/users/{user_id}` - Reject/delete a pending user account request (Admin only).
+
+---
+
+## Backend Features & Best Practices
+
+### Advanced Querying & Pagination
+The backend leverages robust, dynamic querying for the leads pipeline.
+* **Server-Side Pagination:** Handled efficiently using SQLAlchemy's `offset` and `limit`. The `PaginatedLeadsResponse` model ensures the frontend receives the total count and page details to render pagination controls seamlessly.
+* **Dynamic Search:** Handled on the backend using `ilike` queries, allowing users to search across multiple fields (e.g., Lead Name, Company Name, and Email) concurrently.
+* **Filtering and Sorting:** Managed natively via URL query parameters, translating directly into SQLAlchemy `.filter()` and `.order_by()` clauses.
+
+### Error & Status Code Handling
+The FastAPI application strictly follows RESTful principles for HTTP status codes to ensure clear client-server communication:
+* **`200 OK` / `201 Created`:** Used for successful data retrieval, updates, and resource creation.
+* **`400 Bad Request`:** Returned when invalid data is provided or business logic constraints are violated.
+* **`401 Unauthorized`:** Triggered when JWT tokens are missing, expired, or invalid.
+* **`403 Forbidden`:** Raised when an authenticated user (like a Member) tries to access Admin-only endpoints.
+* **`404 Not Found`:** Returned when requesting a specific resource (lead, user) that does not exist in the database.
+
+### Comprehensive Testing
+A rigorous test suite guarantees system stability. We use `pytest` with a dedicated test database to ensure tests do not pollute development data. 
+Tests are located in `server/tests/`:
+* **`test_auth.py`:** Validates secure user registration, login flows, and token generation/validation.
+* **`test_leads.py`:** Verifies the CRUD operations for leads and complex relational additions like notes and activities.
+* **`test_flows.py`:** Tests complete, multi-step user journeys spanning across different API endpoints.
