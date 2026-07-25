@@ -16,7 +16,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     # In production, replace with your frontend Vercel URL
-    allow_origins=["http://localhost:5173"], 
+    allow_origins=["http://localhost:5173", "https://prospectly-woad.vercel.app"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
