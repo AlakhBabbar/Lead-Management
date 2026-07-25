@@ -4,28 +4,40 @@ from datetime import datetime
 from app.db.models import LeadStatus
 import uuid
 
+# --- Notes ---
+class NoteCreate(BaseModel):
+    content: str
+    activity_log_id: Optional[uuid.UUID] = None
+
+# Add a small schema to return the author's basic info
+class NoteAuthor(BaseModel):
+    first_name: str
+    role: str
+    class Config:
+        from_attributes = True
+
+# Update NoteResponse to include the author and activity ID
+class NoteResponse(BaseModel):
+    id: uuid.UUID
+    content: str
+    created_at: datetime
+    activity_log_id: Optional[uuid.UUID] = None
+    author: Optional[NoteAuthor] = None  # NEW: Automatically fetches the user details
+    
+    class Config:
+        from_attributes = True
+
 # --- Activity Log ---
 class ActivityLogResponse(BaseModel):
     id: uuid.UUID
     action: str
     details: Optional[str] = None
     created_at: datetime
+    notes: List[NoteResponse] = []  # NEW: Nested notes for the UI chat popover
     
     class Config:
         from_attributes = True
 
-# --- Notes ---
-class NoteCreate(BaseModel):
-    content: str
-
-class NoteResponse(BaseModel):
-    id: uuid.UUID
-    content: str
-    created_at: datetime
-    id: uuid.UUID
-    
-    class Config:
-        from_attributes = True
 
 # --- Leads ---
 # The public capture form will use this schema
@@ -59,3 +71,10 @@ class LeadResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PaginatedLeadsResponse(BaseModel):
+    data: List[LeadResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int

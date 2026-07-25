@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronDown, ExternalLink } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
@@ -9,96 +11,106 @@ interface LeadSlideOverProps {
   onUpdate: () => void;
 }
 
-interface TeamMember {
-  id: string;
-  first_name: string;
-  email: string;
+// Custom Smooth Dropdown Component
+function SmoothDropdown({ value, options, onChange, disabled, label }: any) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((o: any) => o.value === value) || options[0];
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</label>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all disabled:opacity-50 hover:bg-gray-50"
+      >
+        <span className="truncate">{selectedOption?.label || 'Select...'}</span>
+        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100">
+          {options.map((opt: any) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setIsOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${value === opt.value ? 'bg-gray-50 font-medium text-gray-900' : 'text-gray-600'}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function LeadSlideOver({ lead, isOpen, onClose, onUpdate }: LeadSlideOverProps) {
   const { user } = useAuth();
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const navigate = useNavigate();
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [newNote, setNewNote] = useState('');
+  const [selectedActivityId, setSelectedActivityId] = useState<string>('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Fetch verified team members when the drawer opens (Admin only feature)
   useEffect(() => {
     if (isOpen && user?.role?.toUpperCase() === 'ADMIN') {
-      fetchTeamMembers();
+      api.get('/users/approved').then(res => setTeamMembers(res.data)).catch(console.error);
     }
   }, [isOpen, user]);
 
-  const fetchTeamMembers = async () => {
-    try {
-      // Assuming you have an endpoint to list verified team members, e.g. GET /api/users/verified
-      const res = await api.get('/users/approved');
-      setTeamMembers(res.data);
-    } catch (err) {
-      console.error('Failed to load team members for assignment', err);
-    }
-  };
-
   if (!isOpen || !lead) return null;
 
-  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const activities = [...(lead.activities || [])].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  
+  // Logic for minimal trail: First + Last 4
+  const showEllipsis = activities.length > 5;
+  const displayActivities = showEllipsis 
+    ? [activities[0], 'ELLIPSIS', ...activities.slice(-4)] 
+    : activities;
+
+  const handleStatusChange = async (val: string) => {
     setIsUpdating(true);
     try {
-      await api.put(`/leads/${lead.id}`, { status: e.target.value });
+      await api.put(`/leads/${lead.id}`, { status: val });
       onUpdate();
-    } catch (error) {
-      console.error('Failed to update status', error);
-    } finally {
-      setIsUpdating(false);
-    }
+    } catch (err) { console.error(err); } finally { setIsUpdating(false); }
   };
 
-  const handleAssigneeChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleAssigneeChange = async (val: string) => {
     setIsUpdating(true);
     try {
-      // Assuming your backend update route accepts assigned_to_id
-      await api.put(`/leads/${lead.id}`, { assigned_to: e.target.value || null });
+      await api.put(`/leads/${lead.id}`, { assigned_to: val || null });
       onUpdate();
-    } catch (error) {
-      console.error('Failed to update assignee', error);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleDeleteLead = async () => {
-    if (!window.confirm(`Delete the lead for "${lead.name}"? This cannot be undone.`)) {
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      await api.delete(`/leads/${lead.id}`);
-      onUpdate();
-      onClose();
-    } catch (error) {
-      console.error('Failed to delete lead', error);
-      alert('Failed to delete lead. Please try again.');
-    } finally {
-      setIsDeleting(false);
-    }
+    } catch (err) { console.error(err); } finally { setIsUpdating(false); }
   };
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNote.trim()) return;
-    
     setIsSubmittingNote(true);
     try {
-      await api.post(`/leads/${lead.id}/notes`, { content: newNote });
+      await api.post(`/leads/${lead.id}/notes`, { 
+        content: newNote,
+        activity_log_id: selectedActivityId || null
+      });
       setNewNote('');
+      setSelectedActivityId('');
       onUpdate();
-    } catch (error) {
-      console.error('Failed to add note', error);
-    } finally {
-      setIsSubmittingNote(false);
-    }
+    } catch (err) { console.error(err); } finally { setIsSubmittingNote(false); }
   };
 
   return (
@@ -113,156 +125,101 @@ export default function LeadSlideOver({ lead, isOpen, onClose, onUpdate }: LeadS
               <h2 className="text-xl font-medium text-gray-900">{lead.name}</h2>
               <p className="text-sm text-gray-500 mt-1">{lead.company || 'No company listed'}</p>
             </div>
-            <div className="flex items-center gap-2">
-              {user?.role?.toUpperCase() === 'ADMIN' && (
-                <button
-                  onClick={handleDeleteLead}
-                  disabled={isDeleting}
-                  title="Delete lead"
-                  className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 p-1.5 rounded-md hover:bg-red-50"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              )}
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1.5">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1.5">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            
-            {/* Quick Controls: Status & Assignment */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  Status
-                </label>
-                <select
-                  value={lead.status}
-                  onChange={handleStatusChange}
-                  disabled={isUpdating}
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all disabled:opacity-50"
-                >
-                  <option value="new">New</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="qualified">Qualified</option>
-                  <option value="lost">Lost</option>
-                  <option value="won">Won</option>
-                </select>
-              </div>
+              <SmoothDropdown 
+                label="Status"
+                value={lead.status}
+                disabled={isUpdating}
+                onChange={handleStatusChange}
+                options={[
+                  { value: 'new', label: 'New' },
+                  { value: 'contacted', label: 'Contacted' },
+                  { value: 'qualified', label: 'Qualified' },
+                  { value: 'won', label: 'Won' },
+                  { value: 'lost', label: 'Lost' }
+                ]}
+              />
 
-              {/* Admin-only Assignment Control */}
               {user?.role?.toUpperCase() === 'ADMIN' && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                    Assignee
-                  </label>
-                  <select
-                    value={lead.assigned_to || ''}
-                    onChange={handleAssigneeChange}
-                    disabled={isUpdating}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all disabled:opacity-50"
-                  >
-                    <option value="">Unassigned</option>
-                    {teamMembers.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.first_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <SmoothDropdown 
+                  label="Assignee"
+                  value={lead.assigned_to || ''}
+                  disabled={isUpdating}
+                  onChange={handleAssigneeChange}
+                  options={[
+                    { value: '', label: 'Unassigned' },
+                    ...teamMembers.map(m => ({ value: m.id, label: m.first_name }))
+                  ]}
+                />
               )}
             </div>
 
-            {/* Contact Details */}
+            {/* Note Input */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                Contact Details
-              </label>
-              <div className="bg-gray-50 rounded-xl p-4 space-y-3 border border-gray-100">
-                <div>
-                  <span className="text-xs text-gray-500 block mb-0.5">Email</span>
-                  <a href={`mailto:${lead.email}`} className="text-sm text-blue-600 hover:underline">{lead.email}</a>
-                </div>
-                {lead.phone && (
-                  <div>
-                    <span className="text-xs text-gray-500 block mb-0.5">Phone</span>
-                    <span className="text-sm text-gray-900">{lead.phone}</span>
-                  </div>
-                )}
-                {lead.message && (
-                  <div>
-                    <span className="text-xs text-gray-500 block mb-0.5">Initial Message</span>
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{lead.message}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Notes Section */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                Internal Notes
-              </label>
-              <form onSubmit={handleAddNote} className="mb-4">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Add Note</label>
+              <form onSubmit={handleAddNote} className="space-y-3">
                 <textarea
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="Add a note..."
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 resize-none transition-all"
-                  rows={2}
-                  required
+                  placeholder="Type note..."
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:outline-none focus:border-gray-900 transition-all resize-none"
+                  rows={2} required
                 />
-                <div className="flex justify-end mt-2">
-                  <button
-                    type="submit"
-                    disabled={isSubmittingNote}
-                    className="px-4 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md hover:bg-gray-800 transition-all active:scale-[0.98] disabled:opacity-50"
+                <div className="flex justify-between items-center">
+                  <select 
+                    value={selectedActivityId}
+                    onChange={(e) => setSelectedActivityId(e.target.value)}
+                    className="text-xs bg-gray-50 border border-gray-200 rounded py-1 px-2 text-gray-600 focus:outline-none"
                   >
-                    {isSubmittingNote ? 'Saving...' : 'Save Note'}
+                    <option value="">(Optional) Link to activity</option>
+                    {activities.map((act: any) => (
+                      <option key={act.id} value={act.id}>{act.action} - {new Date(act.created_at).toLocaleDateString()}</option>
+                    ))}
+                  </select>
+                  <button type="submit" disabled={isSubmittingNote} className="px-4 py-1.5 bg-gray-900 text-white text-xs font-medium rounded hover:bg-gray-800 disabled:opacity-50">
+                    {isSubmittingNote ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </form>
-
-              <div className="space-y-3">
-                {lead.notes?.map((note: any) => (
-                  <div key={note.id} className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
-                    <p className="text-sm text-gray-800">{note.content}</p>
-                    <span className="text-xs text-gray-400 mt-2 block">{new Date(note.created_at).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
             </div>
 
-            {/* Activity Trail — auto-generated history of every change to this lead */}
+            {/* Minimal Activity Trail */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                Activity Trail
-              </label>
-              {(!lead.activities || lead.activities.length === 0) ? (
-                <p className="text-sm text-gray-400">No activity recorded yet.</p>
-              ) : (
-                <ul className="space-y-4">
-                  {[...lead.activities]
-                    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                    .map((activity: any) => (
-                      <li key={activity.id} className="relative pl-5 border-l-2 border-gray-100">
-                        <span className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-gray-300" />
-                        <p className="text-sm text-gray-800">
-                          {activity.details || activity.action}
-                        </p>
-                        <span className="text-xs text-gray-400 mt-0.5 block">
-                          {new Date(activity.created_at).toLocaleString()}
-                        </span>
+              <div className="flex justify-between items-center mb-4">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Activity Overview</label>
+                <button 
+                  onClick={() => navigate(`/dashboard/lead/${lead.id}`)}
+                  className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                >
+                  Detailed View <ExternalLink className="w-3 h-3" />
+                </button>
+              </div>
+
+              <ul className="relative border-l-2 border-gray-200 ml-2">
+                {displayActivities.map((activity: any, idx: number) => {
+                  if (activity === 'ELLIPSIS') {
+                    return (
+                      <li key="ellipsis" className="relative pl-6 pb-6 text-xs text-gray-400 italic">
+                        <span className="absolute -left-[5px] top-2 w-2 h-2 rounded-full bg-gray-200" />
+                        ... more activities ...
                       </li>
-                    ))}
-                </ul>
-              )}
+                    );
+                  }
+                  return (
+                    <li key={activity.id} className="relative pl-6 pb-6 last:pb-0">
+                      <span className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-blue-400 ring-4 ring-white" />
+                      <p className="text-sm text-gray-800">{activity.details || activity.action}</p>
+                      <span className="text-xs text-gray-400">{new Date(activity.created_at).toLocaleDateString()}</span>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
 
           </div>

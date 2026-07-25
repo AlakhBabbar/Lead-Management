@@ -5,7 +5,7 @@ import uuid
 
 from app.db.database import get_db
 from app.db.models import User, UserRole, Lead, LeadStatus
-from app.schemas.lead import LeadCreate, LeadResponse, LeadUpdate, NoteCreate, NoteResponse
+from app.schemas.lead import LeadCreate, LeadResponse, LeadUpdate, NoteCreate, NoteResponse, PaginatedLeadsResponse
 from app.utils.deps import get_current_user, get_current_admin
 from app.services.lead_service import create_public_lead, get_all_leads, update_lead_details, create_lead_note, delete_lead
 
@@ -16,17 +16,19 @@ def submit_public_lead(lead_data: LeadCreate, db: Session = Depends(get_db)):
     """Public lead capture form — no login required."""
     return create_public_lead(db, lead_data)
 
-@router.get("/", response_model=List[LeadResponse])
+@router.get("/", response_model=PaginatedLeadsResponse)
 def fetch_leads(
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(25, ge=1, le=100),
     status: Optional[LeadStatus] = None,
     assigned_to: Optional[uuid.UUID] = None,
+    search: Optional[str] = None,
+    sort: Optional[str] = "NEWEST",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Fetch all leads with pagination and filtering. Members only see their assigned leads."""
-    return get_all_leads(db, current_user, page, limit, status, assigned_to)
+    """Fetch all leads with true server-side pagination, sorting, and searching."""
+    return get_all_leads(db, current_user, page, limit, status, assigned_to, search, sort)
 
 @router.put("/{lead_id}", response_model=LeadResponse)
 def modify_lead(

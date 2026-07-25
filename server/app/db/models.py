@@ -59,10 +59,13 @@ class Note(Base):
     
     lead_id = Column(Uuid, ForeignKey("leads.id"), nullable=False)
     user_id = Column(Uuid, ForeignKey("users.id"), nullable=False)
+    activity_log_id = Column(Uuid, ForeignKey("activity_logs.id"), nullable=True)
+  
 
     # Relationships
     lead = relationship("Lead", back_populates="notes")
     author = relationship("User", back_populates="notes")
+    activity = relationship("ActivityLog", back_populates="notes")
 
 class ActivityLog(Base):
     __tablename__ = "activity_logs"
@@ -76,3 +79,4 @@ class ActivityLog(Base):
 
     # Relationships
     lead = relationship("Lead", back_populates="activities")
+    notes = relationship("Note", back_populates="activity")

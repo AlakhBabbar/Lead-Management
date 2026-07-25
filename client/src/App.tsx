@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import TeamManagement from './pages/TeamManagement';
 import Signup from './pages/Signup';
+import LeadDetails from './pages/LeadDetails';
 import ProtectedRoute from './components/ProtectedRoutes'; // <-- Import the bouncer
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/team" element={<TeamManagement />} />
+                <Route path="/dashboard/lead/:id" element={<LeadDetails />} />
               </Route>
             </Routes>
           </main>

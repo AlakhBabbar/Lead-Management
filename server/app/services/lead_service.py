@@ -1,7 +1,7 @@
 from typing import List, Optional
 import uuid
-
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, desc, asc
 from app.db.models import Lead, ActivityLog, LeadStatus, Note, User, UserRole
 from app.schemas.lead import LeadCreate, LeadUpdate, NoteCreate
 
@@ -34,26 +34,61 @@ def get_all_leads(
     db: Session, 
     user: User, 
     page: int = 1, 
-    limit: int = 20, 
+    limit: int = 25, 
     status: Optional[LeadStatus] = None, 
-    assigned_to: Optional[uuid.UUID] = None
-) -> List[Lead]:
+    assigned_to: Optional[uuid.UUID] = None,
+    search: Optional[str] = None,
+    sort: Optional[str] = "NEWEST"
+) -> dict:
     
     query = db.query(Lead)
     
-    # Role-based filtering: Members only see their own leads
+    # 1. Role-based filtering
     if user.role == UserRole.MEMBER:
         query = query.filter(Lead.assigned_to == user.id)
     elif assigned_to:
         query = query.filter(Lead.assigned_to == assigned_to)
         
-    # Optional status filtering
+    # 2. Status filtering
     if status:
         query = query.filter(Lead.status == status)
         
-    # Pagination
+    # 3. Search text filtering
+    if search:
+        query = query.filter(
+            or_(
+                Lead.name.ilike(f"%{search}%"),
+                Lead.email.ilike(f"%{search}%"),
+                Lead.company.ilike(f"%{search}%")
+            )
+        )
+
+    # 4. Sorting logic
+    if sort == "OLDEST":
+        query = query.order_by(asc(Lead.created_at))
+    elif sort == "AZ":
+        query = query.order_by(asc(Lead.name))
+    elif sort == "ZA":
+        query = query.order_by(desc(Lead.name))
+    else: # Default NEWEST
+        query = query.order_by(desc(Lead.created_at))
+        
+    # 5. Count total matches before pagination
+    total = query.count()
+    
+    # 6. Apply Pagination (Offset & Limit)
     offset = (page - 1) * limit
-    return query.offset(offset).limit(limit).all()
+    items = query.offset(offset).limit(limit).all()
+    
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    
+    return {
+        "data": items,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages
+    }
 
 def update_lead_details(db: Session, lead: Lead, lead_update: LeadUpdate) -> Lead:
     changes = []
@@ -63,7 +98,11 @@ def update_lead_details(db: Session, lead: Lead, lead_update: LeadUpdate) -> Lea
         lead.status = lead_update.status
         
     if lead_update.assigned_to and lead_update.assigned_to != lead.assigned_to:
-        changes.append(f"Lead assigned to user {lead_update.assigned_to}")
+        # Fetch the user from the database to get their actual name
+        assigned_user = db.query(User).filter(User.id == lead_update.assigned_to).first()
+        user_name = assigned_user.first_name if assigned_user else str(lead_update.assigned_to)
+        
+        changes.append(f"Lead assigned to {user_name}")
         lead.assigned_to = lead_update.assigned_to
         
     if changes:
@@ -90,12 +129,22 @@ def delete_lead(db: Session, lead: Lead) -> None:
     db.commit()
 
 def create_lead_note(db: Session, lead_id: uuid.UUID, user_id: uuid.UUID, note_data: NoteCreate) -> Note:
-    new_note = Note(content=note_data.content, lead_id=lead_id, user_id=user_id)
+    new_note = Note(
+        content=note_data.content, 
+        lead_id=lead_id, 
+        user_id=user_id,
+        activity_log_id=note_data.activity_log_id 
+    )
     db.add(new_note)
     
-    # Auto-generate activity log for the note[cite: 1]
-    log = ActivityLog(action="NOTE_ADDED", details="A new note was added to the lead.", lead_id=lead_id)
-    db.add(log)
+    # NEW: Log "GENERAL_NOTE_ADDED" if it is not linked to an existing activity
+    if not note_data.activity_log_id:
+        log = ActivityLog(
+            action="GENERAL_NOTE_ADDED", 
+            details="A general note was added to the lead.", 
+            lead_id=lead_id
+        )
+        db.add(log)
     
     db.commit()
     db.refresh(new_note)
