@@ -9,6 +9,7 @@ interface PendingUser {
   email: string;
   role: string;
   is_verified: boolean;
+  created_at: string;
 }
 
 export default function TeamManagement() {
@@ -86,20 +87,28 @@ export default function TeamManagement() {
   };
 
   const filteredAndSortedUsers = useMemo(() => {
-    return pendingUsers
-      .filter((u) => {
-        const matchesSearch = 
-          u.first_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-          u.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesRole = roleFilter === 'ALL' || u.role.toUpperCase() === roleFilter;
-        return matchesSearch && matchesRole;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'AZ') return a.first_name.localeCompare(b.first_name);
-        if (sortBy === 'ZA') return b.first_name.localeCompare(a.first_name);
-        return -1;
-      });
-  }, [pendingUsers, searchQuery, roleFilter, sortBy]);
+      return pendingUsers
+        .filter((u) => {
+          const matchesSearch = 
+            u.first_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            u.email.toLowerCase().includes(searchQuery.toLowerCase());
+          const matchesRole = roleFilter === 'ALL' || u.role.toUpperCase() === roleFilter;
+          return matchesSearch && matchesRole;
+        })
+        .sort((a, b) => {
+          if (sortBy === 'AZ') return a.first_name.localeCompare(b.first_name);
+          if (sortBy === 'ZA') return b.first_name.localeCompare(a.first_name);
+          
+          // NEW: Actual date sorting logic
+          const dateA = new Date(a.created_at || 0).getTime();
+          const dateB = new Date(b.created_at || 0).getTime();
+          
+          if (sortBy === 'OLDEST') return dateA - dateB;
+          
+          // Default to NEWEST
+          return dateB - dateA;
+        });
+    }, [pendingUsers, searchQuery, roleFilter, sortBy]);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">

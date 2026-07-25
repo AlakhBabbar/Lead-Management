@@ -7,7 +7,7 @@ from app.db.database import get_db
 from app.db.models import User, UserRole, Lead, LeadStatus
 from app.schemas.lead import LeadCreate, LeadResponse, LeadUpdate, NoteCreate, NoteResponse, PaginatedLeadsResponse
 from app.utils.deps import get_current_user, get_current_admin
-from app.services.lead_service import create_public_lead, get_all_leads, update_lead_details, create_lead_note, delete_lead
+from app.services.lead_service import create_public_lead, get_all_leads, update_lead_details, create_lead_note, delete_lead, get_lead_by_id
 
 router = APIRouter(prefix="/api/leads", tags=["Leads"])
 
@@ -15,6 +15,25 @@ router = APIRouter(prefix="/api/leads", tags=["Leads"])
 def submit_public_lead(lead_data: LeadCreate, db: Session = Depends(get_db)):
     """Public lead capture form — no login required."""
     return create_public_lead(db, lead_data)
+
+
+from fastapi import HTTPException
+import uuid
+
+@router.get("/{lead_id}", response_model=LeadResponse)
+def get_single_lead(
+    lead_id: uuid.UUID, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    """API Endpoint to fetch a single lead by ID."""
+    lead = get_lead_by_id(db, lead_id, current_user)
+    
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found or unauthorized.")
+        
+    return lead
+
 
 @router.get("/", response_model=PaginatedLeadsResponse)
 def fetch_leads(

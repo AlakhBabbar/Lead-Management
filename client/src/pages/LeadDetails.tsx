@@ -66,12 +66,18 @@ export default function LeadDetails() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchLead = () => {
-    api.get('/leads/').then(res => {
-      const found = res.data.find((l: any) => l.id === id);
-      setLead(found);
-    }).catch(console.error);
-  };
+    const fetchLead = () => {
+        // We now directly fetch the specific lead by its ID
+        api.get(`/leads/${id}`).then(res => {
+        setLead(res.data);
+        }).catch(err => {
+        console.error(err);
+        // Optional: Redirect back to dashboard if lead isn't found
+        if (err.response?.status === 404) {
+            navigate('/dashboard');
+        }
+        });
+    };
 
   useEffect(() => {
     fetchLead();

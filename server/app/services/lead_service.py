@@ -1,6 +1,7 @@
 from typing import List, Optional
 import uuid
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy import or_, desc, asc
 from app.db.models import Lead, ActivityLog, LeadStatus, Note, User, UserRole
 from app.schemas.lead import LeadCreate, LeadUpdate, NoteCreate
@@ -30,6 +31,19 @@ def create_public_lead(db: Session, lead_data: LeadCreate) -> Lead:
     
     return new_lead
 
+def get_lead_by_id(db: Session, lead_id: uuid.UUID, user: User) -> Lead:
+    """Fetch a single lead by ID with eager loading and permission checks."""
+    query = db.query(Lead).options(
+        selectinload(Lead.activities).selectinload(ActivityLog.notes).joinedload(Note.author),
+        selectinload(Lead.notes).joinedload(Note.author)
+    )
+    
+    # Enforce role-based access control at the database query level
+    if user.role == UserRole.MEMBER:
+        query = query.filter(Lead.assigned_to == user.id)
+        
+    return query.filter(Lead.id == lead_id).first()
+
 def get_all_leads(
     db: Session, 
     user: User, 
@@ -41,7 +55,11 @@ def get_all_leads(
     sort: Optional[str] = "NEWEST"
 ) -> dict:
     
-    query = db.query(Lead)
+    # NEW: Attach options to eagerly load all nested data in bulk queries
+    query = db.query(Lead).options(
+        selectinload(Lead.activities).selectinload(ActivityLog.notes).joinedload(Note.author),
+        selectinload(Lead.notes).joinedload(Note.author)
+    )
     
     # 1. Role-based filtering
     if user.role == UserRole.MEMBER:

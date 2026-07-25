@@ -54,3 +54,6 @@ htmlcov/
 .coverage.*
 coverage.xml
 *.cover
+demo_accounts_credentials.txt
+seed_users.py
+seed_leads.py

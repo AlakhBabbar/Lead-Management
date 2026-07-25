@@ -21,11 +21,14 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Uuid, primary_key=True, default=uuid.uuid4, index=True)
-    first_name = Column(String, nullable=False) # New field
+    first_name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     role = Column(SQLEnum(UserRole), default=UserRole.MEMBER, nullable=False)
-    is_verified = Column(Boolean, default=False, nullable=False) # New flag
+    is_verified = Column(Boolean, default=False, nullable=False)
+    
+    # NEW: Add the creation timestamp
+    created_at = Column(DateTime, default=datetime.utcnow) 
 
     # Relationships
     assigned_leads = relationship("Lead", back_populates="assignee")
@@ -80,3 +83,4 @@ class ActivityLog(Base):
     # Relationships
     lead = relationship("Lead", back_populates="activities")
     notes = relationship("Note", back_populates="activity")
+

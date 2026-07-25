@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import api from '../api/axios';
 
 export default function Signup() {
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('MEMBER'); // Default to member
+  const [role, setRole] = useState('member'); 
+  const [showPassword, setShowPassword] = useState(false);
   
   // Real-time validation states
   const [passwordError, setPasswordError] = useState('');
@@ -47,7 +49,7 @@ export default function Signup() {
         first_name: firstName.trim(), 
         email: email.trim().toLowerCase(), 
         password,
-        role // Include the selected role in the request
+        role 
       });
       setIsSuccess(true);
     } catch (err: any) {
@@ -129,16 +131,25 @@ export default function Signup() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={handlePasswordChange}
-                    className={`w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-gray-900 text-sm focus:bg-white focus:outline-none focus:ring-1 transition-all duration-300 ease-out ${
-                      passwordError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-gray-900 focus:ring-gray-900'
-                    }`}
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={handlePasswordChange}
+                      className={`w-full px-4 py-2.5 pr-10 bg-gray-50 border rounded-lg text-gray-900 text-sm focus:bg-white focus:outline-none focus:ring-1 transition-all duration-300 ease-out ${
+                        passwordError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-gray-900 focus:ring-gray-900'
+                      }`}
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                   {passwordError && (
                     <p className="mt-1.5 text-xs text-red-500 transition-all duration-300">
                       {passwordError}
@@ -146,7 +157,6 @@ export default function Signup() {
                   )}
                 </div>
 
-                {/* NEW: Role Selection Dropdown */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Account Role</label>
                   <select
