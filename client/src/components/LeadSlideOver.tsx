@@ -202,7 +202,7 @@ export default function LeadSlideOver({ lead, isOpen, onClose, onUpdate }: LeadS
               </div>
 
               <ul className="relative border-l-2 border-gray-200 ml-2">
-                {displayActivities.map((activity: any, idx: number) => {
+                {displayActivities.map((activity: any, _idx: number) => {
                   if (activity === 'ELLIPSIS') {
                     return (
                       <li key="ellipsis" className="relative pl-6 pb-6 text-xs text-gray-400 italic">
