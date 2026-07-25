@@ -18,7 +18,7 @@ export default function Navbar() {
           {/* Logo Section */}
           <Link to="/" className="flex items-center gap-3 transition-opacity hover:opacity-80">
             <img src="/logo.svg" alt="Logo" className="h-8 w-auto" />
-            <span className="font-semibold text-xl tracking-tight text-gray-900">LeadFlow</span>
+            <span className="font-semibold text-xl tracking-tight text-gray-900">Prospectly</span>
           </Link>
 
           {/* Navigation Links */}
