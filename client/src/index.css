@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+/* 1. Define the animation utility using the new @theme directive */
+@theme {
+  --animate-slide-in-right: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 2. Write the standard CSS keyframes */
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Keep your existing base styles */
+body {
+  @apply bg-gray-50 text-gray-900;
+}

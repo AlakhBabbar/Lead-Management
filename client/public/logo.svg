@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="256"
+     height="256"
+     viewBox="0 0 256 256">
+
+    <!-- Background -->
+    <rect width="256" height="256" rx="48" fill="#000000"/>
+
+    <!-- Connections -->
+    <path d="M64 176
+             C88 176 96 144 128 144
+             S168 112 192 80"
+          stroke="#FFFFFF"
+          stroke-width="8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          fill="none"/>
+
+    <!-- Branch -->
+    <path d="M128 144
+             C144 144 154 164 176 184"
+          stroke="#FFFFFF"
+          stroke-width="8"
+          stroke-linecap="round"
+          fill="none"/>
+
+    <!-- Nodes -->
+    <circle cx="64" cy="176" r="10" fill="#FFFFFF"/>
+    <circle cx="128" cy="144" r="10" fill="#FFFFFF"/>
+    <circle cx="192" cy="80" r="10" fill="#FFFFFF"/>
+    <circle cx="176" cy="184" r="10" fill="#FFFFFF"/>
+
+</svg>
