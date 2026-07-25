@@ -77,6 +77,18 @@ def update_lead_details(db: Session, lead: Lead, lead_update: LeadUpdate) -> Lea
         
     return lead
 
+def delete_lead(db: Session, lead: Lead) -> None:
+    """Permanently delete a lead and its related notes/activity logs.
+
+    The models don't define ON DELETE CASCADE, so we clean up the child
+    rows (Notes, ActivityLog) ourselves before deleting the Lead itself,
+    otherwise this would fail with a foreign key constraint error.
+    """
+    db.query(Note).filter(Note.lead_id == lead.id).delete()
+    db.query(ActivityLog).filter(ActivityLog.lead_id == lead.id).delete()
+    db.delete(lead)
+    db.commit()
+
 def create_lead_note(db: Session, lead_id: uuid.UUID, user_id: uuid.UUID, note_data: NoteCreate) -> Note:
     new_note = Note(content=note_data.content, lead_id=lead_id, user_id=user_id)
     db.add(new_note)

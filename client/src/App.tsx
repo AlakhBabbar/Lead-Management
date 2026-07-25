@@ -10,8 +10,8 @@ import ProtectedRoute from './components/ProtectedRoutes'; // <-- Import the bou
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
         <div className="min-h-screen flex flex-col font-sans bg-gray-50 text-gray-900">
           
           <Navbar />
@@ -35,8 +35,8 @@ function App() {
             Built for <a href="https://digitalheroesco.com" className="text-gray-900 font-medium hover:underline transition-all">Digital Heroes Training Task</a>
           </footer>
         </div>
-      </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

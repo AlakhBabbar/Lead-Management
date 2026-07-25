@@ -21,6 +21,7 @@ export default function LeadSlideOver({ lead, isOpen, onClose, onUpdate }: LeadS
   const [newNote, setNewNote] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch verified team members when the drawer opens (Admin only feature)
   useEffect(() => {
@@ -66,6 +67,24 @@ export default function LeadSlideOver({ lead, isOpen, onClose, onUpdate }: LeadS
     }
   };
 
+  const handleDeleteLead = async () => {
+    if (!window.confirm(`Delete the lead for "${lead.name}"? This cannot be undone.`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await api.delete(`/leads/${lead.id}`);
+      onUpdate();
+      onClose();
+    } catch (error) {
+      console.error('Failed to delete lead', error);
+      alert('Failed to delete lead. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNote.trim()) return;
@@ -94,11 +113,25 @@ export default function LeadSlideOver({ lead, isOpen, onClose, onUpdate }: LeadS
               <h2 className="text-xl font-medium text-gray-900">{lead.name}</h2>
               <p className="text-sm text-gray-500 mt-1">{lead.company || 'No company listed'}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-2">
+              {user?.role?.toUpperCase() === 'ADMIN' && (
+                <button
+                  onClick={handleDeleteLead}
+                  disabled={isDeleting}
+                  title="Delete lead"
+                  className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 p-1.5 rounded-md hover:bg-red-50"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1.5">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -204,6 +237,32 @@ export default function LeadSlideOver({ lead, isOpen, onClose, onUpdate }: LeadS
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Activity Trail — auto-generated history of every change to this lead */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                Activity Trail
+              </label>
+              {(!lead.activities || lead.activities.length === 0) ? (
+                <p className="text-sm text-gray-400">No activity recorded yet.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {[...lead.activities]
+                    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .map((activity: any) => (
+                      <li key={activity.id} className="relative pl-5 border-l-2 border-gray-100">
+                        <span className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-gray-300" />
+                        <p className="text-sm text-gray-800">
+                          {activity.details || activity.action}
+                        </p>
+                        <span className="text-xs text-gray-400 mt-0.5 block">
+                          {new Date(activity.created_at).toLocaleString()}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              )}
             </div>
 
           </div>

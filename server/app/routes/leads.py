@@ -6,8 +6,8 @@ import uuid
 from app.db.database import get_db
 from app.db.models import User, UserRole, Lead, LeadStatus
 from app.schemas.lead import LeadCreate, LeadResponse, LeadUpdate, NoteCreate, NoteResponse
-from app.utils.deps import get_current_user
-from app.services.lead_service import create_public_lead, get_all_leads, update_lead_details, create_lead_note
+from app.utils.deps import get_current_user, get_current_admin
+from app.services.lead_service import create_public_lead, get_all_leads, update_lead_details, create_lead_note, delete_lead
 
 router = APIRouter(prefix="/api/leads", tags=["Leads"])
 
@@ -66,3 +66,17 @@ def add_note(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot add notes to a lead not assigned to you")
 
     return create_lead_note(db, lead_id, current_user.id, note_data)
+
+@router.delete("/{lead_id}", status_code=status.HTTP_200_OK)
+def remove_lead(
+    lead_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)  # Admin-only: enforced at the dependency level
+):
+    """Delete a lead permanently. Admins only — Members get a 403 automatically."""
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    delete_lead(db, lead)
+    return {"message": "Lead deleted successfully"}

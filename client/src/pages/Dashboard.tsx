@@ -37,8 +37,12 @@ export default function Dashboard() {
         const updatedLead = response.data.find((l: Lead) => l.id === selectedLead.id);
         if (updatedLead) setSelectedLead(updatedLead);
       }
-    } catch (err) {
-      setError('Failed to load leads. Please try refreshing.');
+    } catch (err: any) {
+      // A 401 means the session expired — the global axios interceptor already
+      // redirects to /login, so there's no need to flash an error here too.
+      if (err.response?.status !== 401) {
+        setError('Failed to load leads. Please try refreshing.');
+      }
     } finally {
       setIsLoading(false);
     }

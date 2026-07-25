@@ -37,8 +37,12 @@ export default function TeamManagement() {
     try {
       const response = await api.get('/users/pending');
       setPendingUsers(response.data);
-    } catch (err) {
-      setError('Failed to load pending users.');
+    } catch (err: any) {
+      // A 401 means the session expired — the global axios interceptor already
+      // redirects to /login, so there's no need to flash an error here too.
+      if (err.response?.status !== 401) {
+        setError('Failed to load pending users.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -49,8 +53,10 @@ export default function TeamManagement() {
     try {
       await api.put(`/users/${userId}/approve`);
       setPendingUsers(prev => prev.filter(u => u.id !== userId));
-    } catch (err) {
-      alert('Failed to approve user. Please try again.');
+    } catch (err: any) {
+      if (err.response?.status !== 401) {
+        alert('Failed to approve user. Please try again.');
+      }
     } finally {
       setProcessingId(null);
     }
@@ -67,8 +73,10 @@ export default function TeamManagement() {
       // Assuming your backend route to delete a user is DELETE /api/users/{id}
       await api.delete(`/users/${userId}`);
       setPendingUsers(prev => prev.filter(u => u.id !== userId));
-    } catch (err) {
-      alert('Failed to remove user request. Please try again.');
+    } catch (err: any) {
+      if (err.response?.status !== 401) {
+        alert('Failed to remove user request. Please try again.');
+      }
     } finally {
       setProcessingId(null);
     }
